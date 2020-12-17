@@ -1,0 +1,258 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Cases</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.0/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+    <h2 class="text-center">Table "Cases"</h2>
+    <form name="caseForm">
+        <input type="hidden" id="idIn" name="idIn" value=0 />
+        <div class="form-group">
+            <label Добавить>Date:</label>
+            <input type="date" id="dateIn" name="dateIn" />
+            <br />
+            <label Добавить>Payment:</label>
+            <input id="paymentIn" name="paymentIn" />
+            <br />
+            <label Добавить>Confirmation Documents:</label>
+            <input id="confirmationDocumentsIn" name="confirmationDocumentsIn" />
+
+        </div>
+        <div class="form-group">
+            <label Добавить>Agent:</label>
+            <select id="agentIn" name="agentIn">
+            </select>
+            <br />
+        </div>
+
+        <div class="form-group">
+            <label Добавить>Policy:</label>
+            <select id="policyIn" name="policyIn">
+            </select>
+            <br />
+            <button type="submit" id="submit" class="btn btn-primary">Save</button>
+            <a id="reset" onclick="reset()" class="btn btn-primary text-white">Reset</a>
+        </div>
+    </form>
+<table class="table table-striped text-break">
+    <thead class="thead-dark">
+    <tr>
+        <th>Id</th>
+        <th>Agent</th>
+        <th>Policy</th>
+        <th>Date</th>
+        <th>Payment</th>
+        <th>Confirmation Documents</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+<script>
+    async function GetCases() {
+        const response = await fetch("/api/cases", {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+        });
+
+        if (response.ok === true) {
+            const cases = await response.json();
+            let rows = document.querySelector("tbody");
+            cases.forEach(s => {
+                rows.append(row(s));
+            });
+        }
+    }
+
+    async function GetCase(id) {
+        const response = await fetch("/api/cases/" + id, {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+        });
+        if (response.ok === true) {
+            const casee = await response.json();
+            const form = document.forms["caseForm"];
+            form.elements["idIn"].value = casee.id;
+            form.elements["dateIn"].value = casee.date.substring(0, 10);
+            form.elements["paymentIn"].value = casee.payment;
+            form.elements["confirmationDocumentsIn"].value = casee.confirmationDocuments;
+            form.elements["policyIn"].value = casee.policyId;
+            form.elements["agentIn"].value = casee.agentId;
+        }
+    }
+
+    function row(casee) {
+        const tr = document.createElement("tr");
+        tr.setAttribute("data-rowid", casee.id);
+
+        const idTd = document.createElement("td");
+        idTd.append(casee.id);
+        tr.append(idTd);
+
+
+        const agentTd = document.createElement("td");
+        agentTd.append(casee.agentFullName);
+        tr.append(agentTd);
+
+        const policyTd = document.createElement("td");
+        policyTd.append(casee.policyRegisterDate);
+        tr.append(policyTd);
+
+        const dateTd = document.createElement("td");
+        dateTd.append(casee.date);
+        tr.append(dateTd);
+
+        const paymentTd = document.createElement("td");
+        paymentTd.append(casee.payment);
+        tr.append(paymentTd);
+
+        const confirmationDocumentsTd = document.createElement("td");
+        confirmationDocumentsTd.append(casee.confirmationDocuments);
+        tr.append(confirmationDocumentsTd);
+
+        const linksTd = document.createElement("td");
+
+        const editLink = document.createElement("a");
+        editLink.setAttribute("data-id", casee.id);
+        editLink.setAttribute("style", "cursor:pointer;padding:15px;");
+        editLink.append("Change");
+        editLink.addEventListener("click", e => {
+            e.preventDefault();
+            GetCase(casee.id);
+        });
+        linksTd.append(editLink);
+
+        const removeLink = document.createElement("a");
+        removeLink.setAttribute("data-id", casee.idIn);
+        removeLink.setAttribute("style", "cursor:pointer;padding:15px;");
+        removeLink.append("Delete");
+        removeLink.addEventListener("click", e => {
+            e.preventDefault();
+            DeleteCase(casee.id);
+        });
+
+        linksTd.append(removeLink);
+        tr.appendChild(linksTd);
+
+        return tr;
+    }
+
+    async function CreateUser(caseDate, casePayment, caseConfirmationDocuments, casePolicyId, caseAgentId) {
+        const response = await fetch("api/cases", {
+            method: "POST",
+            headers: { "Accept": "application/json", "Content-Type": "application/json" },
+            body: JSON.stringify({
+                date: caseDate,
+                payment: casePayment,
+                confirmationDocuments: parseInt(caseConfirmationDocuments, 10),
+                policyId: parseInt(casePolicyId, 10),
+                agentId: parseInt(caseAgentId, 10)
+            })
+        });
+        if (response.ok === true) {
+            const user = await response.json();
+            reset();
+            document.querySelector("tbody").append(row(user));
+        }
+    }
+
+    async function EditUser(caseId, caseDate, casePayment, caseConfirmationDocuments, caseAgentId, casePolicyId) {
+        const response = await fetch("/api/cases/", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                id: parseInt(caseId, 10),
+                date: caseDate,
+                payment: casePayment,
+                confirmationDocuments: caseConfirmationDocuments,
+                policyId: parseInt(casePolicyId, 10),
+                agentId: parseInt(caseAgentId, 10)
+            })
+        });
+        if (response.ok === true) {
+            const casee = await response.json();
+            reset();
+            document.querySelector("tr[data-rowid='" + casee.id + "']").replaceWith(row(casee));
+        }
+    }
+
+    async function DeleteCase(id) {
+        const response = await fetch("/api/cases/" + id, {
+            method: "DELETE",
+            headers: { "Accept": "application/json" }
+        });
+        if (response.ok === true) {
+            const casee = await response.json();
+            document.querySelector("tr[data-rowid='" + casee.id + "']").remove();
+        }
+    }
+
+    function reset() {
+        const form = document.forms["caseForm"];
+        form.reset();
+        form.elements["idIn"].value = 0;
+    }
+    document.getElementById("reset").click(function (e) {
+        e.preventDefault();
+        reset();
+    })
+
+    document.forms["caseForm"].addEventListener("submit", e => {
+        e.preventDefault();
+        const form = document.forms["caseForm"];
+        const id = form.elements["idIn"].value;
+        const date = form.elements["dateIn"].value;
+        const payment = form.elements["paymentIn"].value;
+        const confirmationDocuments = form.elements["confirmationDocumentsIn"].value;
+        const agentId = form.elements["agentIn"].value;
+        const policyId = form.elements["policyIn"].value;
+        if (id == 0)
+            CreateUser(date, payment, confirmationDocuments, agentId, policyId);
+        else
+            EditUser(id, date, payment, confirmationDocuments, agentId, policyId);
+    });
+
+    async function GetPolicies() {
+        const response = await fetch("/api/cases/policies", {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+        });
+        if (response.ok == true) {
+            const policies = await response.json();
+            let select = document.getElementById("policyIn");
+            var i = 0;
+            policies.forEach(g => {
+                select.options[i] = new Option(g.registredAt.substring(0, 10), g.id);
+                i += 1;
+            })
+        }
+    }
+
+    async function GetAgents() {
+        const response = await fetch("/api/cases/agents", {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+        });
+        if (response.ok == true) {
+            const agents = await response.json();
+            let select = document.getElementById("agentIn");
+            var i = 0;
+            agents.forEach(g => {
+                select.options[i] = new Option(g.name, g.id);
+                i += 1;
+            })
+        }
+    }
+
+    GetCases();
+    GetPolicies();
+    GetAgents();
+
+
+
+</script>
+</body>
+</html>
